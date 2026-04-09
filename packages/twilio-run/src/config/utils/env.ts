@@ -52,6 +52,11 @@ export async function readLocalEnvFile(flags: {
   return { envPath: '', localEnv: {} };
 }
 
+// Twilio Serverless environment context has a hard limit of 3583 bytes.
+// This threshold triggers a warning before the deploy fails with error 82006.
+const ENV_CONTEXT_WARN_BYTES = 3000;
+const ENV_CONTEXT_MAX_BYTES = 3583;
+
 export function filterEnvVariablesForDeploy(
   localEnv: EnvironmentVariablesWithAuth
 ): EnvironmentVariables {
@@ -69,5 +74,24 @@ export function filterEnvVariablesForDeploy(
   delete env.ACCOUNT_SID;
   delete env.AUTH_TOKEN;
 
+  checkEnvContextSize(env);
+
   return env;
+}
+
+function checkEnvContextSize(env: EnvironmentVariables): void {
+  const size = Buffer.byteLength(JSON.stringify(env), 'utf8');
+  if (size > ENV_CONTEXT_MAX_BYTES) {
+    console.warn(
+      `\n  WARNING: Environment variables total ${size} bytes, exceeding the ${ENV_CONTEXT_MAX_BYTES}-byte Twilio Serverless context limit.\n` +
+        `  Deploy will fail with error 82006. Remove unused variables from .env or split across services.\n`
+    );
+  } else if (size > ENV_CONTEXT_WARN_BYTES) {
+    console.warn(
+      `\n  WARNING: Environment variables total ${size}/${ENV_CONTEXT_MAX_BYTES} bytes (${Math.round(
+        (size / ENV_CONTEXT_MAX_BYTES) * 100
+      )}% of limit).\n` +
+        `  Consider removing unused variables to avoid error 82006.\n`
+    );
+  }
 }

@@ -40,6 +40,19 @@ export async function getCredentialsFromFlags<
     debug('Using account credentials from Twilio CLI');
     username = externalCliOptions.username;
     password = externalCliOptions.password;
+
+    // Warn when CLI profile and .env file target different accounts
+    if (
+      envVariables.ACCOUNT_SID &&
+      externalCliOptions.accountSid &&
+      envVariables.ACCOUNT_SID !== externalCliOptions.accountSid
+    ) {
+      console.warn(
+        `\n  WARNING: CLI profile targets account ${externalCliOptions.accountSid}\n` +
+          `  but .env file specifies ACCOUNT_SID=${envVariables.ACCOUNT_SID}.\n` +
+          `  Deploy will use the CLI profile credentials. Use --username to override.\n`
+      );
+    }
   } else {
     if (envVariables.ACCOUNT_SID) {
       debug('Using Account SID from env variables');
